@@ -30,7 +30,14 @@
 unsigned long currentTime = 0;
 unsigned long click = 0;
 unsigned long vertraging = 100;
+unsigned long t0;
+unsigned long t1;
 int stappenteller = 0;
+bool statusDrukknop;
+bool vergrendel;
+int nulstap = 0;
+int maxstap = 500;
+int stapcase = 0;
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
 // Example for Arduino UNO with input signals on pin 2 and 3
@@ -40,8 +47,8 @@ int stappenteller = 0;
 #elif defined(ESP32)
 // Example for ESP32 with input signals on pin 4 and 15
 #define PIN_IN1 4
-#define PIN_IN2 15
-
+#define PIN_IN2 5
+#define Drukknop 16
 #endif
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
@@ -72,6 +79,7 @@ ICACHE_RAM_ATTR void checkPosition()
 void setup()
 {
   Serial.begin(115200);
+  pinMode(Drukknop, INPUT);
   while (!Serial)
     ;
   Serial.println("InterruptRotator example for the RotaryEncoder library.");
@@ -86,6 +94,16 @@ void loop()
   static int pos = 0;
   static int dir = 0;
   encoder.tick();
+  statusDrukknop = digitalRead(Drukknop);
+  if (statusDrukknop == LOW && vergrendel == 0)
+  {
+    vergrendel = 1;
+    Serial.println("Drukknop ingedrukt");
+  }
+  if (statusDrukknop == HIGH)
+  {
+    vergrendel = 0;
+  }
 
   int newPos = encoder.getPosition();
 
