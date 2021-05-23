@@ -27,6 +27,11 @@
 #include <Arduino.h>
 #include <RotaryEncoder.h>
 
+unsigned long currentTime = 0;
+unsigned long click = 0;
+unsigned long vertraging = 100;
+int stappenteller = 0;
+
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
 // Example for Arduino UNO with input signals on pin 2 and 3
 #define PIN_IN1 2
@@ -41,10 +46,10 @@
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
 // Setup a RotaryEncoder with 4 steps per latch for the 2 signal input pins:
-// * RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::FOUR3); //comment/uncomment
+RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::FOUR3); //comment/uncomment
 
 // Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
-RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03); //uncomment/comment
+// * RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03); //uncomment/comment
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
 // This interrupt routine will be called on any change of one of the input signals
@@ -79,15 +84,37 @@ void setup()
 void loop()
 {
   static int pos = 0;
+  static int dir = 0;
   encoder.tick();
 
   int newPos = encoder.getPosition();
+
   if (pos != newPos)
   {
     Serial.print("pos:");
     Serial.print(newPos);
-    Serial.print(" dir:");
-    Serial.println((int)(encoder.getDirection()));
+    Serial.print("  dir:");
+    dir = (int(encoder.getDirection()));
+    Serial.println(dir);
     pos = newPos;
+    currentTime = millis();
+    if (currentTime - click >= vertraging)
+    {
+      Serial.println("Traag....");
+      stappenteller = stappenteller + dir;
+    }
+    else
+    {
+      Serial.println("Snel....");
+      stappenteller = stappenteller + 10 * dir;
+    }
+
+    Serial.print("tijdsverschil tussen kliks ");
+    Serial.println(currentTime - click);
+    Serial.print("stappenteller= ");
+    Serial.println(stappenteller);
+    Serial.println();
+
+    click = currentTime;
   }
 }
