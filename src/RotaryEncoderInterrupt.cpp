@@ -27,36 +27,45 @@
 #include <Arduino.h>
 #include <RotaryEncoder.h>
 
+// Top Level:
+int DEBUG = 1; //Set to 1 to enable serial monitor debugging info
+
+// Variabelen rotary
+int stappenteller = 0;
 unsigned long currentTime = 0;
 unsigned long click = 0;
 unsigned long vertraging = 100;
-unsigned long t0;
-unsigned long t1;
-int stappenteller = 0;
-bool statusDrukknop;
-bool vergrendel;
+
 int nulstap = 0;
 int maxstap = 500;
-int stapcase = 0;
+
+//Variabelen keyRotary:
+int statusKeyRotary = 0;
+int statusKeyRotaryVorig = 0;
+int valKeyRotary = 0;
+unsigned long t0;
+unsigned long t1;
+unsigned long bounce_delay_s1 = 20;
+unsigned long hold_delay_s1 = 1000;
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
-// Example for Arduino UNO with input signals on pin 2 and 3
-#define PIN_IN1 2
-#define PIN_IN2 3
+// Arduino UNO with input signals on pin 2 and 3 
+#define s1Rotary 2
+#define s2Rotary 3
 
 #elif defined(ESP32)
-// Example for ESP32 with input signals on pin 4 and 15
-#define PIN_IN1 4
-#define PIN_IN2 5
-#define Drukknop 16
+// ESP32 with input signals on pin 4, 5 en 16
+#define s1Rotary 4
+#define s2Rotary 5
+#define keyRotary 16
 #endif
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
 // Setup a RotaryEncoder with 4 steps per latch for the 2 signal input pins:
-RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::FOUR3); //comment/uncomment
+RotaryEncoder encoder(s1Rotary, s2Rotary, RotaryEncoder::LatchMode::FOUR3); //comment/uncomment
 
 // Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
-// * RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03); //uncomment/comment
+// * RotaryEncoder encoder(s1Rotary, s2Rotary, RotaryEncoder::LatchMode::TWO03); //uncomment/comment
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
 // This interrupt routine will be called on any change of one of the input signals
@@ -79,59 +88,166 @@ ICACHE_RAM_ATTR void checkPosition()
 void setup()
 {
   Serial.begin(115200);
-  pinMode(Drukknop, INPUT);
+  pinMode(keyRotary, INPUT);
   while (!Serial)
     ;
-  Serial.println("InterruptRotator example for the RotaryEncoder library.");
+  Serial.println();
+  Serial.println("InterruptRotator met KeyPress.");
+  Serial.println();
 
-  attachInterrupt(digitalPinToInterrupt(PIN_IN1), checkPosition, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIN_IN2), checkPosition, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(s1Rotary), checkPosition, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(s2Rotary), checkPosition, CHANGE);
+
+  //if DEBUG is on, print serial monitor
+  if (DEBUG)
+  {
+    Serial.println("Debugging is ON");
+  }
+}
+void SM_s1()
+{
+  //Bijna alle statussen gebruiken deze lijnen, daarom staan ze buiten de State Machine
+  valKeyRotary = digitalRead(keyRotary);
+  statusKeyRotaryVorig = statusKeyRotary;
+
+  //State Machine
+  switch (statusKeyRotary)
+  {
+  case 0: //RESET!
+    //Zet alles in beginsituatie
+    statusKeyRotary = 1;
+    break;
+
+  case 1: //WACHT-op-ON
+    //Wacht op keyRotary ingedrukt (=LOW)
+    if (valKeyRotary == LOW)
+    {
+      statusKeyRotary = 2;
+    }
+    break;
+
+  case 2: //INGEDRUKT!
+    //Registreer de tijd en ga verder naar CHECK BOUNCE
+    t0 = millis();
+    statusKeyRotary = 3;
+    break;
+
+  case 3: //CHECK BOUNCE
+    //Check bounce delay.  Bij bounce terug naar RESET
+    t1 = millis();
+    if (t1 - t0 > bounce_delay_s1)
+    {
+      statusKeyRotary = 4;
+    }
+    if (valKeyRotary == HIGH)
+    {
+      statusKeyRotary = 0;
+    }
+    break;
+
+  case 4: //DEBOUNCED
+    //keyRotary los? (=HIGH) > Korte puls. keyRotary langer dan hold_delay > Lange puls
+    t1 = millis();
+    if (valKeyRotary == HIGH)
+    {
+      statusKeyRotary = 5;
+    }
+    if (t1 - t0 > hold_delay_s1)
+    {
+      statusKeyRotary = 6;
+    }
+    break;
+
+  case 5: //Korte Puls
+    //doorgaan naar RESET
+    statusKeyRotary = 0;
+    break;
+
+  case 6: //Lange Puls
+    //Doorgaan naar WACHT-op-OFF
+    statusKeyRotary = 7;
+    break;
+
+  case 7: //WACHT-op-OFF
+    //wacht op keyRotary los laten >> RESET
+    if (valKeyRotary == HIGH)
+    {
+      statusKeyRotary = 0;
+    }
+    break;
+  }
 }
 
-// Read the current position of the encoder and print out when changed.
 void loop()
 {
+  // put your main code here, to run repeatedly:
+  SM_s1(); //voer statemachine uit
+
+  if (DEBUG) // If DEBUG enabled >> print boodschappen
+  {
+    if (statusKeyRotaryVorig != statusKeyRotary) // If status wijzigt, print status
+    {
+      Serial.print("KEY State: ");
+      Serial.println(statusKeyRotary);
+    }
+
+    if (statusKeyRotary == 6) // keyRotary lang ingedrukt?
+    {
+      Serial.println("Lange puls!");
+    }
+    if (statusKeyRotary == 5) // keyRotary kort ingedrukt?
+    {
+      Serial.println("Korte puls!");
+    }
+  };
+
   static int pos = 0;
   static int dir = 0;
   encoder.tick();
-  statusDrukknop = digitalRead(Drukknop);
-  if (statusDrukknop == LOW && vergrendel == 0)
-  {
-    vergrendel = 1;
-    Serial.println("Drukknop ingedrukt");
-  }
-  if (statusDrukknop == HIGH)
-  {
-    vergrendel = 0;
-  }
-
+  // Read de positie van de encoder en print bij wijziging.
   int newPos = encoder.getPosition();
-
   if (pos != newPos)
   {
-    Serial.print("pos:");
-    Serial.print(newPos);
-    Serial.print("  dir:");
+    if (DEBUG)
+    {
+      Serial.print("pos:");
+      Serial.print(newPos);
+      Serial.print("  dir:"); /* code */
+    }
+
     dir = (int(encoder.getDirection()));
-    Serial.println(dir);
+
+    if (DEBUG)
+    {
+      Serial.println(dir);
+    }
+
     pos = newPos;
     currentTime = millis();
     if (currentTime - click >= vertraging)
     {
-      Serial.println("Traag....");
+      if (DEBUG)
+      {
+        Serial.println("Traag....");
+      }
       stappenteller = stappenteller + dir;
     }
     else
     {
-      Serial.println("Snel....");
+      if (DEBUG)
+      {
+        Serial.println("Snel....");
+      }
       stappenteller = stappenteller + 10 * dir;
     }
-
-    Serial.print("tijdsverschil tussen kliks ");
-    Serial.println(currentTime - click);
-    Serial.print("stappenteller= ");
-    Serial.println(stappenteller);
-    Serial.println();
+    if (DEBUG)
+    {
+      Serial.print("tijdsverschil tussen kliks ");
+      Serial.println(currentTime - click);
+      Serial.print("stappenteller= ");
+      Serial.println(stappenteller);
+      Serial.println();
+    }
 
     click = currentTime;
   }
