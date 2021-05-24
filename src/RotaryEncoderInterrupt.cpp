@@ -18,7 +18,7 @@
 // Attach a rotary encoder with output pins to
 // * 2 and 3 on Arduino UNO. (supported by attachInterrupt)
 // * D5 and D6 on ESP8266 board (e.g. NodeMCU).>> deleted
-// * 4 and 15 on ESP32 board.
+// * 4 and 5 on ESP32 board.
 // Swap the pins when direction is detected wrong.
 // The common contact should be attached to ground.
 //
@@ -39,7 +39,7 @@ unsigned long vertraging = 100;
 int nulstap = 0;
 int maxstap = 500;
 
-//Variabelen keyRotary:
+// Variabelen keyRotary:
 int statusKeyRotary = 0;
 int statusKeyRotaryVorig = 0;
 int valKeyRotary = 0;
@@ -48,8 +48,22 @@ unsigned long t1;
 unsigned long bounce_delay_s1 = 20;
 unsigned long hold_delay_s1 = 1000;
 
+// Variabelen stepper
+const int maxSpeed = 400;
+const int acceleration = 400;
+
+bool open = 0;
+bool sluit = 0;
+bool klaar = 0;
+bool geopend = 0;
+bool opgetrokken = 0;
+bool gesloten = 0;
+int hoogstePositie = 3200;
+int slotpositie = 100;
+long reststappen;
+
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
-// Arduino UNO with input signals on pin 2 and 3 
+// Arduino UNO with input signals on pin 2 and 3
 #define s1Rotary 2
 #define s2Rotary 3
 
@@ -58,6 +72,11 @@ unsigned long hold_delay_s1 = 1000;
 #define s1Rotary 4
 #define s2Rotary 5
 #define keyRotary 16
+#define stepPin 25
+#define dirPin 26
+#define enablePin 27
+#define openPin 32
+#define sluitPin 33
 #endif
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
@@ -104,7 +123,8 @@ void setup()
     Serial.println("Debugging is ON");
   }
 }
-void SM_s1()
+
+void SM_key()
 {
   //Bijna alle statussen gebruiken deze lijnen, daarom staan ze buiten de State Machine
   valKeyRotary = digitalRead(keyRotary);
@@ -177,11 +197,40 @@ void SM_s1()
     break;
   }
 }
+/*
+ void SM_stepper();
+{
+
+  switch (statusStepper)
+  {
+  case 0:
+    /* code */
+//break;
+
+//case 1:
+/* code */
+//break;
+
+//case 2:
+/* code */
+//break;
+
+//case 3:
+/* code */
+//break;
+
+// case 4:
+/* code */
+// break;
+//}
+//}
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  SM_s1(); //voer statemachine uit
+  SM_key(); //voer statemachine uit
+
+  //SM_stepper(); // voer statemachine stepper uit
 
   if (DEBUG) // If DEBUG enabled >> print boodschappen
   {
