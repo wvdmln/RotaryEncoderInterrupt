@@ -26,9 +26,10 @@
 
 #include <Arduino.h>
 #include <RotaryEncoder.h>
+#include <AccelStepper.h>
 
 // Top Level:
-int DEBUG = 1; //Set to 1 to enable serial monitor debugging info
+int DEBUG = 0; //Set to 1 to enable serial monitor debugging info
 
 // Variabelen rotary
 int stappenteller = 0;
@@ -49,7 +50,7 @@ unsigned long bounce_delay_s1 = 20;
 unsigned long hold_delay_s1 = 1000;
 
 // Variabelen stepper
-const int maxSpeed = 400;
+const int maxSpeed = 800;
 const int acceleration = 400;
 
 bool open = 0;
@@ -58,8 +59,10 @@ bool klaar = 0;
 bool geopend = 0;
 bool opgetrokken = 0;
 bool gesloten = 0;
-int hoogstePositie = 3200;
-int slotpositie = 100;
+int statusStepper = 0;
+int statusStepperVorig = 0;
+int hoogstePositie = 12800;
+int slotpositie = 400;
 long reststappen;
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
@@ -104,6 +107,9 @@ ICACHE_RAM_ATTR void checkPosition()
 
 #endif
 
+// Define a stepper and the pins it will use
+AccelStepper stepper(AccelStepper::DRIVER, stepPin, dirPin); // Defaults to AccelStepper::FULL4WIRE (4 pins) on 2, 3, 4, 5
+
 void setup()
 {
   Serial.begin(115200);
@@ -116,6 +122,16 @@ void setup()
 
   attachInterrupt(digitalPinToInterrupt(s1Rotary), checkPosition, CHANGE);
   attachInterrupt(digitalPinToInterrupt(s2Rotary), checkPosition, CHANGE);
+
+  stepper.setMaxSpeed(maxSpeed);
+  stepper.setAcceleration(acceleration);
+  stepper.setEnablePin(enablePin);
+  stepper.setPinsInverted(false, false, true); //dirPin, stepPin, enablePin
+  stepper.disableOutputs();
+
+  pinMode(enablePin, OUTPUT);
+  pinMode(openPin, INPUT_PULLUP);
+  pinMode(sluitPin, INPUT_PULLUP);
 
   //if DEBUG is on, print serial monitor
   if (DEBUG)
@@ -197,44 +213,93 @@ void SM_key()
     break;
   }
 }
-/*
- void SM_stepper();
+
+void SM_stap()
 {
+  open = digitalRead(openPin);
+  sluit = digitalRead(sluitPin);
+  statusStepperVorig = statusStepper;
 
   switch (statusStepper)
   {
-  case 0:
-    /* code */
-//break;
+  case 0: //Deur dicht
+    stepper.disableOutputs();
+    if (open == LOW)
+    {
+      statusStepper = 1;
+    }
 
-//case 1:
-/* code */
-//break;
+    break;
 
-//case 2:
-/* code */
-//break;
+  case 1: //Naar hoogste positie
+    stepper.enableOutputs();
+    stepper.moveTo(hoogstePositie);
+    //stepper.run;
+    if (stepper.distanceToGo() == 0)
+    {
+      statusStepper = 2;
+    }
+    if (sluit == LOW)
+    {
+      statusStepper = 5;
+    }
 
-//case 3:
-/* code */
-//break;
+    break;
 
-// case 4:
-/* code */
-// break;
-//}
-//}
+  case 2: //Naar slotpositie
+    stepper.enableOutputs();
+    stepper.moveTo(hoogstePositie - slotpositie);
+    if (stepper.distanceToGo() == 0)
+    {
+      statusStepper = 3;
+    }
+    break;
 
+  case 3: //Deur open
+    stepper.disableOutputs();
+    if (sluit == LOW)
+    {
+      statusStepper = 4;
+    }
+    break;
+
+  case 4: //Terug naar hoogste positie
+    stepper.enableOutputs();
+    stepper.moveTo(hoogstePositie);
+    if (stepper.distanceToGo() == 0)
+    {
+      statusStepper = 5;
+    }
+    if (open == LOW)
+    {
+      statusStepper = 1;
+    }
+    break;
+
+  case 5: //Naar laagste positie
+    stepper.enableOutputs();
+    stepper.moveTo(0);
+    if (stepper.distanceToGo() == 0)
+    {
+      statusStepper = 0;
+    }
+    if (open == LOW)
+    {
+      statusStepper = 1;
+    }
+
+    break;
+  }
+}
 void loop()
 {
-  // put your main code here, to run repeatedly:
-  SM_key(); //voer statemachine uit
-
-  //SM_stepper(); // voer statemachine stepper uit
+  SM_stap(); // voer statemachine stepper uit
+  stepper.run();
+  SM_key(); //voer statemachine key rotary uit
 
   if (DEBUG) // If DEBUG enabled >> print boodschappen
   {
-    if (statusKeyRotaryVorig != statusKeyRotary) // If status wijzigt, print status
+    if (statusKeyRotaryVorig != statusKeyRotary) // If statusKeyRotary wijzigt, print status
     {
       Serial.print("KEY State: ");
       Serial.println(statusKeyRotary);
@@ -248,10 +313,18 @@ void loop()
     {
       Serial.println("Korte puls!");
     }
+    if (statusStepperVorig != statusStepper) // If statusStepper wijzigt, print status
+    {
+      Serial.print("targetPosition :");
+      Serial.println(stepper.targetPosition());
+      Serial.print("Stepper State: ");
+      Serial.println(statusStepper);
+    }
   };
 
   static int pos = 0;
   static int dir = 0;
+
   encoder.tick();
   // Read de positie van de encoder en print bij wijziging.
   int newPos = encoder.getPosition();

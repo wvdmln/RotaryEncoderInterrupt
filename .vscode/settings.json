@@ -2,5 +2,9 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "editor.tokenColorCustomizations": {
+        "comments": "",
+        "textMateRules": []
     }
 }
