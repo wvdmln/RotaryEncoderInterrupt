@@ -29,7 +29,7 @@
 #include <AccelStepper.h>
 
 // Top Level:
-int DEBUG = 0; //Set to 1 to enable serial monitor debugging info
+int DEBUG = 1; //Set to 1 to enable serial monitor debugging info
 
 // Variabelen rotary
 int stappenteller = 0;
@@ -126,7 +126,7 @@ void setup()
   stepper.setMaxSpeed(maxSpeed);
   stepper.setAcceleration(acceleration);
   stepper.setEnablePin(enablePin);
-  stepper.setPinsInverted(false, false, true); //dirPin, stepPin, enablePin
+  stepper.setPinsInverted(true, true, false); //dirPin, stepPin, enablePin
   stepper.disableOutputs();
 
   pinMode(enablePin, OUTPUT);
@@ -291,11 +291,27 @@ void SM_stap()
     break;
   }
 }
+void volgRotary()
+{
+  open = digitalRead(openPin);
+  sluit = digitalRead(sluitPin);
+  if (open == LOW)
+  {
+    stepper.enableOutputs();
+    stepper.moveTo(stappenteller * 10);
+  }
+  else
+  {
+    stepper.disableOutputs();
+  }
+}
+
 void loop()
 {
+  //volgRotary();
   SM_stap(); // voer statemachine stepper uit
   stepper.run();
-  SM_key(); //voer statemachine key rotary uit
+  //SM_key(); //voer statemachine key rotary uit
 
   if (DEBUG) // If DEBUG enabled >> print boodschappen
   {
