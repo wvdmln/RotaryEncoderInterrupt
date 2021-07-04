@@ -19,6 +19,7 @@
 // * 2 and 3 on Arduino UNO. (supported by attachInterrupt)
 // * D5 and D6 on ESP8266 board (e.g. NodeMCU).>> deleted
 // * 4 and 5 on ESP32 board.
+// * Settings Microstep Driver > Microstep = 8 / Pulse/rev = 1600 / I = 2A
 // Swap the pins when direction is detected wrong.
 // The common contact should be attached to ground.
 //
@@ -50,8 +51,8 @@ unsigned long bounce_delay_s1 = 20;
 unsigned long hold_delay_s1 = 1000;
 
 // Variabelen stepper
-const int maxSpeed = 800;
-const int acceleration = 400;
+const int maxSpeed = 900;
+const int acceleration = 1800;
 
 bool open = 0;
 bool sluit = 0;
@@ -61,7 +62,7 @@ bool opgetrokken = 0;
 bool gesloten = 0;
 int statusStepper = 0;
 int statusStepperVorig = 0;
-int hoogstePositie = 12800;
+int hoogstePositie = 10400;
 int slotpositie = 400;
 long reststappen;
 
