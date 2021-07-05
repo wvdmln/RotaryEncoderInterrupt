@@ -62,8 +62,8 @@ bool opgetrokken = 0;
 bool gesloten = 0;
 int statusStepper = 0;
 int statusStepperVorig = 0;
-int hoogstePositie = 10400;
-int slotpositie = 400;
+int hoogstePositie = 11750;
+int slotpositie = 500;
 long reststappen;
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
@@ -81,6 +81,7 @@ long reststappen;
 #define enablePin 27
 #define openPin 32
 #define sluitPin 33
+#define magneetslotPin 14
 #endif
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
@@ -131,6 +132,7 @@ void setup()
   stepper.disableOutputs();
 
   pinMode(enablePin, OUTPUT);
+  pinMode(magneetslotPin, OUTPUT);
   pinMode(openPin, INPUT_PULLUP);
   pinMode(sluitPin, INPUT_PULLUP);
 
@@ -229,7 +231,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
-
+    digitalWrite(magneetslotPin, LOW);
     break;
 
   case 1: //Naar hoogste positie
@@ -244,7 +246,7 @@ void SM_stap()
     {
       statusStepper = 5;
     }
-
+    digitalWrite(magneetslotPin, HIGH);
     break;
 
   case 2: //Naar slotpositie
@@ -254,6 +256,7 @@ void SM_stap()
     {
       statusStepper = 3;
     }
+    digitalWrite(magneetslotPin, LOW);
     break;
 
   case 3: //Deur open
@@ -262,6 +265,7 @@ void SM_stap()
     {
       statusStepper = 4;
     }
+    digitalWrite(magneetslotPin, LOW);
     break;
 
   case 4: //Terug naar hoogste positie
@@ -275,6 +279,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
+    digitalWrite(magneetslotPin, LOW);
     break;
 
   case 5: //Naar laagste positie
@@ -288,7 +293,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
-
+    digitalWrite(magneetslotPin, HIGH);
     break;
   }
 }
