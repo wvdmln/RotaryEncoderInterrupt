@@ -386,7 +386,7 @@ void loop()
     }
     if (DEBUG)
     {
-      Serial.print("tijdsverschil tussen kliks ");
+      Serial.print("tijdsverschil tussen clicks ");
       Serial.println(currentTime - click);
       Serial.print("stappenteller= ");
       Serial.println(stappenteller);
