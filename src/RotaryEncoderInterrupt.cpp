@@ -51,8 +51,8 @@ unsigned long bounce_delay_s1 = 20;
 unsigned long hold_delay_s1 = 1000;
 
 // Variabelen stepper
-const int maxSpeed = 900;
-const int acceleration = 1800;
+const int maxSpeed = 2000;
+const int acceleration = 500;
 
 bool open = 0;
 bool sluit = 0;
@@ -62,7 +62,7 @@ bool opgetrokken = 0;
 bool gesloten = 0;
 int statusStepper = 0;
 int statusStepperVorig = 0;
-int hoogstePositie = 11750;
+int hoogstePositie = 12000;
 int slotpositie = 500;
 long reststappen;
 
@@ -231,7 +231,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
-    digitalWrite(magneetslotPin, LOW);
+    digitalWrite(magneetslotPin, HIGH);
     break;
 
   case 1: //Naar hoogste positie
@@ -246,7 +246,7 @@ void SM_stap()
     {
       statusStepper = 5;
     }
-    digitalWrite(magneetslotPin, HIGH);
+    digitalWrite(magneetslotPin, LOW);
     break;
 
   case 2: //Naar slotpositie
@@ -256,7 +256,7 @@ void SM_stap()
     {
       statusStepper = 3;
     }
-    digitalWrite(magneetslotPin, LOW);
+    digitalWrite(magneetslotPin, HIGH);
     break;
 
   case 3: //Deur open
@@ -265,7 +265,7 @@ void SM_stap()
     {
       statusStepper = 4;
     }
-    digitalWrite(magneetslotPin, LOW);
+    digitalWrite(magneetslotPin, HIGH);
     break;
 
   case 4: //Terug naar hoogste positie
@@ -279,7 +279,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
-    digitalWrite(magneetslotPin, LOW);
+    digitalWrite(magneetslotPin, HIGH);
     break;
 
   case 5: //Naar laagste positie
@@ -293,7 +293,7 @@ void SM_stap()
     {
       statusStepper = 1;
     }
-    digitalWrite(magneetslotPin, HIGH);
+    digitalWrite(magneetslotPin, LOW);
     break;
   }
 }
