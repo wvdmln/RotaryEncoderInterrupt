@@ -28,9 +28,10 @@
 #include <Arduino.h>
 #include <RotaryEncoder.h>
 #include <AccelStepper.h>
+#include "Adafruit_VEML7700.h"
 
 // Top Level:
-int DEBUG = 1; //Set to 1 to enable serial monitor debugging info
+int DEBUG = 1; // Set to 1 to enable serial monitor debugging info
 
 // Variabelen rotary
 int stappenteller = 0;
@@ -51,8 +52,8 @@ unsigned long bounce_delay_s1 = 20;
 unsigned long hold_delay_s1 = 1000;
 
 // Variabelen stepper
-const int maxSpeed = 2000;
-const int acceleration = 500;
+const int maxSpeed = 1000;
+const int acceleration = 250;
 
 bool open = 0;
 bool sluit = 0;
@@ -62,8 +63,8 @@ bool opgetrokken = 0;
 bool gesloten = 0;
 int statusStepper = 0;
 int statusStepperVorig = 0;
-int hoogstePositie = 12000;
-int slotpositie = 500;
+int hoogstePositie = 7250;
+int slotpositie = 250;
 long reststappen;
 
 #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO_EVERY)
@@ -86,7 +87,7 @@ long reststappen;
 
 // http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx
 // Setup a RotaryEncoder with 4 steps per latch for the 2 signal input pins:
-RotaryEncoder encoder(s1Rotary, s2Rotary, RotaryEncoder::LatchMode::FOUR3); //comment/uncomment
+RotaryEncoder encoder(s1Rotary, s2Rotary, RotaryEncoder::LatchMode::FOUR3); // comment/uncomment
 
 // Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
 // * RotaryEncoder encoder(s1Rotary, s2Rotary, RotaryEncoder::LatchMode::TWO03); //uncomment/comment
@@ -128,7 +129,7 @@ void setup()
   stepper.setMaxSpeed(maxSpeed);
   stepper.setAcceleration(acceleration);
   stepper.setEnablePin(enablePin);
-  stepper.setPinsInverted(true, true, false); //dirPin, stepPin, enablePin
+  stepper.setPinsInverted(true, true, false); // dirPin, stepPin, enablePin
   stepper.disableOutputs();
 
   pinMode(enablePin, OUTPUT);
@@ -136,7 +137,7 @@ void setup()
   pinMode(openPin, INPUT_PULLUP);
   pinMode(sluitPin, INPUT_PULLUP);
 
-  //if DEBUG is on, print serial monitor
+  // if DEBUG is on, print serial monitor
   if (DEBUG)
   {
     Serial.println("Debugging is ON");
@@ -145,34 +146,34 @@ void setup()
 
 void SM_key()
 {
-  //Bijna alle statussen gebruiken deze lijnen, daarom staan ze buiten de State Machine
+  // Bijna alle statussen gebruiken deze lijnen, daarom staan ze buiten de State Machine
   valKeyRotary = digitalRead(keyRotary);
   statusKeyRotaryVorig = statusKeyRotary;
 
-  //State Machine
+  // State Machine
   switch (statusKeyRotary)
   {
-  case 0: //RESET!
-    //Zet alles in beginsituatie
+  case 0: // RESET!
+    // Zet alles in beginsituatie
     statusKeyRotary = 1;
     break;
 
-  case 1: //WACHT-op-ON
-    //Wacht op keyRotary ingedrukt (=LOW)
+  case 1: // WACHT-op-ON
+    // Wacht op keyRotary ingedrukt (=LOW)
     if (valKeyRotary == LOW)
     {
       statusKeyRotary = 2;
     }
     break;
 
-  case 2: //INGEDRUKT!
-    //Registreer de tijd en ga verder naar CHECK BOUNCE
+  case 2: // INGEDRUKT!
+    // Registreer de tijd en ga verder naar CHECK BOUNCE
     t0 = millis();
     statusKeyRotary = 3;
     break;
 
-  case 3: //CHECK BOUNCE
-    //Check bounce delay.  Bij bounce terug naar RESET
+  case 3: // CHECK BOUNCE
+    // Check bounce delay.  Bij bounce terug naar RESET
     t1 = millis();
     if (t1 - t0 > bounce_delay_s1)
     {
@@ -184,8 +185,8 @@ void SM_key()
     }
     break;
 
-  case 4: //DEBOUNCED
-    //keyRotary los? (=HIGH) > Korte puls. keyRotary langer dan hold_delay > Lange puls
+  case 4: // DEBOUNCED
+    // keyRotary los? (=HIGH) > Korte puls. keyRotary langer dan hold_delay > Lange puls
     t1 = millis();
     if (valKeyRotary == HIGH)
     {
@@ -197,18 +198,18 @@ void SM_key()
     }
     break;
 
-  case 5: //Korte Puls
-    //doorgaan naar RESET
+  case 5: // Korte Puls
+    // doorgaan naar RESET
     statusKeyRotary = 0;
     break;
 
-  case 6: //Lange Puls
-    //Doorgaan naar WACHT-op-OFF
+  case 6: // Lange Puls
+    // Doorgaan naar WACHT-op-OFF
     statusKeyRotary = 7;
     break;
 
-  case 7: //WACHT-op-OFF
-    //wacht op keyRotary los laten >> RESET
+  case 7: // WACHT-op-OFF
+    // wacht op keyRotary los laten >> RESET
     if (valKeyRotary == HIGH)
     {
       statusKeyRotary = 0;
@@ -225,7 +226,7 @@ void SM_stap()
 
   switch (statusStepper)
   {
-  case 0: //Deur dicht
+  case 0: // Deur dicht
     stepper.disableOutputs();
     if (open == LOW)
     {
@@ -234,10 +235,10 @@ void SM_stap()
     digitalWrite(magneetslotPin, HIGH);
     break;
 
-  case 1: //Naar hoogste positie
+  case 1: // Naar hoogste positie
     stepper.enableOutputs();
     stepper.moveTo(hoogstePositie);
-    //stepper.run;
+    // stepper.run;
     if (stepper.distanceToGo() == 0)
     {
       statusStepper = 2;
@@ -249,7 +250,7 @@ void SM_stap()
     digitalWrite(magneetslotPin, LOW);
     break;
 
-  case 2: //Naar slotpositie
+  case 2: // Naar slotpositie
     stepper.enableOutputs();
     stepper.moveTo(hoogstePositie - slotpositie);
     if (stepper.distanceToGo() == 0)
@@ -259,7 +260,7 @@ void SM_stap()
     digitalWrite(magneetslotPin, HIGH);
     break;
 
-  case 3: //Deur open
+  case 3: // Deur open
     stepper.disableOutputs();
     if (sluit == LOW)
     {
@@ -268,7 +269,7 @@ void SM_stap()
     digitalWrite(magneetslotPin, HIGH);
     break;
 
-  case 4: //Terug naar hoogste positie
+  case 4: // Terug naar hoogste positie
     stepper.enableOutputs();
     stepper.moveTo(hoogstePositie);
     if (stepper.distanceToGo() == 0)
@@ -282,7 +283,7 @@ void SM_stap()
     digitalWrite(magneetslotPin, HIGH);
     break;
 
-  case 5: //Naar laagste positie
+  case 5: // Naar laagste positie
     stepper.enableOutputs();
     stepper.moveTo(0);
     if (stepper.distanceToGo() == 0)
@@ -314,10 +315,10 @@ void volgRotary()
 
 void loop()
 {
-  //volgRotary();
+  // volgRotary();
   SM_stap(); // voer statemachine stepper uit
   stepper.run();
-  //SM_key(); //voer statemachine key rotary uit
+  // SM_key(); //voer statemachine key rotary uit
 
   if (DEBUG) // If DEBUG enabled >> print boodschappen
   {
