@@ -31,7 +31,7 @@
 #include "Adafruit_VEML7700.h"
 
 // Top Level:
-int DEBUG = 0; // Set to 1 to enable serial monitor debugging info
+int DEBUG = 1; // Set to 1 to enable serial monitor debugging info
 
 // Variabelen luxsensor
 
@@ -49,13 +49,9 @@ const int acceleration = 250;
 
 bool open = 0;
 bool sluit = 0;
-// bool klaar = 0;
-// bool geopend = 0;
-// bool opgetrokken = 0;
-// bool gesloten = 0;
 int statusStepper = 0;
 int statusStepperVorig = 0;
-int hoogstePositie = 7250;
+int hoogstePositie = 7700;
 int slotpositie = 250;
 long reststappen;
 
@@ -77,6 +73,20 @@ void setup()
   Serial.println("Automatische kippendeur");
   Serial.println("------------------------");
   Serial.println("");
+
+  //setCpuFrequencyMhz(20);
+
+  stepper.setMaxSpeed(maxSpeed);
+  stepper.setAcceleration(acceleration);
+  stepper.setEnablePin(enablePin);
+  stepper.setPinsInverted(true, true, false); // dirPin, stepPin, enablePin
+  //stepper.disableOutputs();
+
+  pinMode(enablePin, OUTPUT);
+  pinMode(magneetslotPin, OUTPUT);
+  pinMode(openPin, INPUT_PULLUP);
+  pinMode(sluitPin, INPUT_PULLUP);
+  digitalWrite(magneetslotPin, HIGH);
   while (!Serial)
   {
     delay(10);
@@ -90,57 +100,47 @@ void setup()
       ;
   }
   Serial.println("Sensor found");
+  
+    Serial.print(F("Gain: "));
+    switch (veml.getGain())
+    {
+    case VEML7700_GAIN_1:
+      Serial.println("1");
+      break;
+    case VEML7700_GAIN_2:
+      Serial.println("2");
+      break;
+    case VEML7700_GAIN_1_4:
+      Serial.println("1/4");
+      break;
+    case VEML7700_GAIN_1_8:
+      Serial.println("1/8");
+      break;
+    }
 
-  Serial.print(F("Gain: "));
-  switch (veml.getGain())
-  {
-  case VEML7700_GAIN_1:
-    Serial.println("1");
-    break;
-  case VEML7700_GAIN_2:
-    Serial.println("2");
-    break;
-  case VEML7700_GAIN_1_4:
-    Serial.println("1/4");
-    break;
-  case VEML7700_GAIN_1_8:
-    Serial.println("1/8");
-    break;
-  }
+    Serial.print(F("Integration Time (ms): "));
+    switch (veml.getIntegrationTime())
+    {
+    case VEML7700_IT_25MS:
+      Serial.println("25");
+      break;
+    case VEML7700_IT_50MS:
+      Serial.println("50");
+      break;
+    case VEML7700_IT_100MS:
+      Serial.println("100");
+      break;
+    case VEML7700_IT_200MS:
+      Serial.println("200");
+      break;
+    case VEML7700_IT_400MS:
+      Serial.println("400");
+      break;
+    case VEML7700_IT_800MS:
+      Serial.println("800");
+      break;
+    }
 
-  Serial.print(F("Integration Time (ms): "));
-  switch (veml.getIntegrationTime())
-  {
-  case VEML7700_IT_25MS:
-    Serial.println("25");
-    break;
-  case VEML7700_IT_50MS:
-    Serial.println("50");
-    break;
-  case VEML7700_IT_100MS:
-    Serial.println("100");
-    break;
-  case VEML7700_IT_200MS:
-    Serial.println("200");
-    break;
-  case VEML7700_IT_400MS:
-    Serial.println("400");
-    break;
-  case VEML7700_IT_800MS:
-    Serial.println("800");
-    break;
-  }
-
-  stepper.setMaxSpeed(maxSpeed);
-  stepper.setAcceleration(acceleration);
-  stepper.setEnablePin(enablePin);
-  stepper.setPinsInverted(true, true, false); // dirPin, stepPin, enablePin
-  stepper.disableOutputs();
-
-  pinMode(enablePin, OUTPUT);
-  pinMode(magneetslotPin, OUTPUT);
-  pinMode(openPin, INPUT_PULLUP);
-  pinMode(sluitPin, INPUT_PULLUP);
 
   // if DEBUG is on, print serial monitor
   if (DEBUG)
@@ -153,10 +153,11 @@ void Lux()
   if (DEBUG)
   { // If DEBUG enabled >> print boodschappen
     Serial.print("lux: ");
-    Serial.println(veml.readLux());
+    delay(500);
+    //Serial.println(veml.readLux());
   }
   huidigeLux = veml.readLux();
-
+Serial.println (huidigeLux);
   if (huidigeLux < 20 && donker == false)
   {
     autoSluit = true;
@@ -192,7 +193,7 @@ void SM_stap()
   {
   case 0: // Deur dicht
     stepper.disableOutputs();
-    if (open == LOW || autoOpen == true)
+    if (open == LOW|| autoOpen == true)
     {
       autoOpen = false; // om automatisch openen te beletten na handmatig sluiten
       statusStepper = 1;
@@ -227,7 +228,7 @@ void SM_stap()
 
   case 3: // Deur open
     stepper.disableOutputs();
-    if (sluit == LOW || autoSluit == true)
+    if (sluit == LOW ||autoSluit == true)
     {
       autoSluit = false; // om automatisch sluiten te beletten na handmatig openen
       statusStepper = 4;
@@ -287,6 +288,38 @@ void loop()
   if (huidigeMillis - vorigeMillis >= vertragingLuxmeting)
   {
     vorigeMillis = huidigeMillis;
-    Lux();
+    //Lux();
+
+    if (DEBUG)
+  { // If DEBUG enabled >> print boodschappen
+    Serial.print("lux: ");
+    //delay(500);
+    //Serial.println(veml.readLux());
+  }
+  huidigeLux = veml.readLux();
+Serial.println (huidigeLux);
+  if (huidigeLux < 20 && donker == false)
+  {
+    autoSluit = true;
+    donker = true;
+    Serial.println("Puls sluit");
+  }
+
+  else
+  {
+    autoSluit = false;
+  }
+
+  if (huidigeLux > 100 && donker == true)
+  {
+    autoOpen = true;
+    donker = false;
+    Serial.println("Puls open");
+  }
+
+  else
+  {
+    autoOpen = false;
+  }
   }
 }
